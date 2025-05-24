@@ -6,6 +6,20 @@
     <title>Login - Minha Biblioteca Pessoal</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
     <style>
+        /* Variáveis CSS para cores */
+        :root {
+            --color-primary: #007bff; /* Azul vibrante */
+            --color-secondary: #f8f9fa; /* Branco/cinza claro */
+            --color-text-dark: #343a40; /* Texto escuro */
+            --color-text-light: #e9ecef; /* Texto claro */
+            --color-background-light: #f4f4f4; /* Fundo claro */
+            --color-background-dark: #212529; /* Fundo escuro */
+            --color-card-light: #ffffff; /* Card claro */
+            --color-card-dark: #495057; /* Card escuro */
+            --color-success: #28a745;
+            --color-error: #dc3545;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
@@ -15,7 +29,7 @@
             align-items: center;
             min-height: 100vh;
             background: linear-gradient(to right top, #0a0a0a, #000000, #1a2a4a); /* Fundo escuro */
-            color: #e9ecef;
+            color: var(--color-text-light);
             overflow: hidden; /* Para garantir que o fundo fique perfeito */
             position: relative;
         }
@@ -28,197 +42,134 @@
             left: 50%; /* Começa na metade da tela */
             width: 50%;
             height: 100%;
-            background-image: url('https://images.unsplash.com/photo-1536746803254-20a233519391?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); /* Imagem de fundo direita */
+            background-image: url('https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=1770&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); /* Imagem de fundo */
             background-size: cover;
             background-position: center;
-            filter: brightness(0.7); /* Escurece um pouco a imagem */
+            filter: grayscale(80%) brightness(50%) blur(2px); /* Efeito para imagem */
             z-index: 0;
         }
 
         .login-container {
-            background-color: rgba(0, 0, 0, 0.7); /* Fundo semi-transparente para o formulário */
+            background-color: var(--color-background-dark);
             padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8);
-            text-align: left;
-            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            width: 90%;
             max-width: 400px;
-            z-index: 1; /* Para ficar acima do fundo */
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .login-container h2 {
-            color: #f8f9fa;
-            margin-bottom: 25px;
-            font-size: 2.2em;
-            font-weight: 600;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #ced4da;
-            font-size: 0.95em;
-        }
-
-        .form-group input {
-            width: calc(100% - 22px); /* Ajuste para padding */
-            padding: 12px;
-            border: 1px solid #495057;
-            border-radius: 8px;
-            background: linear-gradient(to right, #2c3e50, #34495e); /* Degradê nos inputs */
-            color: #e9ecef;
-            font-size: 1.0em;
-            box-sizing: border-box; /* Inclui padding e borda na largura */
-            transition: border-color 0.3s, box-shadow 0.3s;
-        }
-
-        .form-group input:focus {
-            border-color: #007bff;
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-            outline: none;
-        }
-
-        .forgot-password {
-            text-align: right;
-            margin-top: -10px;
-            margin-bottom: 20px;
-        }
-
-        .forgot-password a {
-            color: #007bff;
-            text-decoration: none;
-            font-size: 0.85em;
-            transition: color 0.3s;
-        }
-
-        .forgot-password a:hover {
-            color: #66b5ff;
-        }
-
-        button {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 8px;
-            background: linear-gradient(to right, #007bff, #0056b3); /* Degradê no botão */
-            color: white;
-            font-size: 1.1em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
-        }
-
-        button:hover {
-            background: linear-gradient(to right, #0056b3, #007bff);
-        }
-
-        .signup-link {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 0.9em;
-            color: #adb5bd;
-        }
-
-        .signup-link a {
-            color: #007bff;
-            text-decoration: none;
-            transition: color 0.3s;
-        }
-
-        .signup-link a:hover {
-            color: #66b5ff;
-        }
-
-        /* Footer */
-        footer {
-            position: absolute;
-            bottom: 20px;
-            left: 0;
-            width: 100%;
-            text-align: center;
-            color: #6c757d;
-            font-size: 0.8em;
+            position: relative; /* Para ficar acima do background ::before */
             z-index: 1;
         }
-        footer a {
-            color: #6c757d;
-            text-decoration: none;
-        }
-        footer a:hover {
-            text-decoration: underline;
+
+        .login-container h1 {
+            color: var(--color-primary);
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
         }
 
-        /* Mensagens de erro/sucesso */
+        .login-form label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: var(--color-text-light);
+            text-align: left; /* Alinha o texto do label à esquerda */
+        }
+
+        .login-form input[type="text"],
+        .login-form input[type="password"] {
+            width: calc(100% - 20px); /* 100% menos o padding */
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #555;
+            border-radius: 5px;
+            background-color: #333;
+            color: var(--color-text-light);
+            font-size: 1em;
+            box-sizing: border-box; /* Inclui padding na largura */
+        }
+
+        .login-form button {
+            background-color: var(--color-primary);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            width: 100%;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .login-form button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
         .message {
-            text-align: center;
+            margin-top: 20px;
             padding: 10px;
             border-radius: 5px;
-            margin-bottom: 15px;
-            font-weight: bold;
-            opacity: 0;
-            transform: translateY(-10px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            display: none; /* Escondido por padrão */
         }
+
         .message.show {
-            opacity: 1;
-            transform: translateY(0);
+            display: block;
         }
-        .message.error {
-            background-color: #dc3545;
-            color: white;
-        }
+
         .message.success {
-            background-color: #28a745;
-            color: white;
+            background-color: rgba(40, 167, 69, 0.2);
+            color: var(--color-success);
+            border: 1px solid var(--color-success);
+        }
+
+        .message.error {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: var(--color-error);
+            border: 1px solid var(--color-error);
+        }
+
+        /* Responsividade */
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 20px;
+                border-radius: 5px;
+            }
+            .login-container h1 {
+                font-size: 2em;
+            }
+            body::before {
+                width: 100%; /* Em telas pequenas, a imagem pode ocupar a tela toda */
+                left: 0;
+            }
         }
     </style>
 </head>
 <body>
     <div class="login-container">
-        <h2>Faça seu Login.</h2>
-        <div id="loginMessage" class="message"></div>
+        <h1>Login</h1>
+        <form id="loginForm" class="login-form">
+            <label for="username">Usuário:</label>
+            <input type="text" id="username" name="username" required>
 
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="username">Email</label>
-                <input type="text" id="username" name="username" required>
-            </div>
-            <div class="form-group">
-                <label for="password">Senha</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            <div class="forgot-password">
-                <a href="#">Esqueci minha senha</a>
-            </div>
+            <label for="password">Senha:</label>
+            <input type="password" id="password" name="password" required>
+
             <button type="submit">Entrar</button>
+            <div id="loginMessage" class="message"></div>
         </form>
-        <div class="signup-link">
-            Ainda não tenho uma conta <a href="#">Criar conta</a>
-        </div>
     </div>
 
-    <footer>
-        2024 | Desenvolvido por <a href="#" style="color: #6c757d;">Seu Nome</a>
-    </footer>
-
     <script>
-        document.getElementById('loginForm').addEventListener('submit', async function(event) {
-            event.preventDefault(); // Impede o envio padrão do formulário
-
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const messageDiv = document.getElementById('loginMessage');
 
             messageDiv.classList.remove('show', 'error', 'success'); // Limpa mensagens anteriores
             messageDiv.textContent = '';
+            messageDiv.style.display = 'none'; // Esconde para reexibir
 
             try {
                 const response = await fetch('/login', {
@@ -234,6 +185,7 @@
                 if (response.ok) {
                     messageDiv.textContent = data.message;
                     messageDiv.classList.add('success', 'show');
+                    messageDiv.style.display = 'block';
                     // Redirecionar para a página da biblioteca após um pequeno atraso
                     setTimeout(() => {
                         window.location.href = '/library'; // Nova rota para a biblioteca
@@ -241,11 +193,13 @@
                 } else {
                     messageDiv.textContent = data.error || 'Erro de login desconhecido.';
                     messageDiv.classList.add('error', 'show');
+                    messageDiv.style.display = 'block';
                 }
             } catch (error) {
                 console.error('Erro na requisição de login:', error);
                 messageDiv.textContent = 'Erro ao conectar com o servidor.';
                 messageDiv.classList.add('error', 'show');
+                messageDiv.style.display = 'block';
             }
         });
     </script>
