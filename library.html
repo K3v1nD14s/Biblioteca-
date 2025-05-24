@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Biblioteca - Kinokuniya Inspired</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
+    <style>
+        /* Variáveis CSS para cores */
+        :root {
+            --color-primary: #007bff; /* Azul vibrante */
+            --color-secondary: #f8f9fa; /* Branco/cinza claro */
+            --color-text-dark: #343a40; /* Texto escuro */
+            --color-text-light: #e9ecef; /* Texto claro */
+            --color-background-light: #f4f4f4; /* Fundo claro */
+            --color-background-dark: #212529; /* Fundo escuro */
+            --color-card-light: #ffffff; /* Card claro */
+            --color-card-dark: #495057; /* Card escuro */
+            --color-button-delete: #dc3545; /* Vermelho para excluir */
+            --color-button-delete-hover: #c82333;
+            --color-button-upload: #28a745; /* Verde para upload */
+            --color-button-upload-hover: #218838;
+            --color-header-light: #0056b3; /* Azul mais escuro para header */
+            --color-header-dark: #1a202c; /* Azul/cinza escuro para header dark */
+            --color-border-light: #dee2e6;
+            --color-border-dark: #6c757d;
+        }
+
+        /* Estilos básicos */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--color-background-light);
+            color: var(--color-text-dark);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header (topo) */
+        header {
+            background-color: var(--color-header-light);
+            color: var(--color-secondary);
+            padding: 15px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.8em;
+            letter-spacing: 1px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .dark-mode-toggle {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color 0.3s;
+        }
+        .dark-mode-toggle:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Seção de Upload */
+        .upload-section {
+            background-color: var(--color-card-light);
+            padding: 25px;
+            margin: 25px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: flex-start;
+        }
+
+        .upload-section h2 {
+            color: var(--color-primary);
+            margin-top: 0;
+            font-size: 1.5em;
+        }
+
+        .upload-controls {
+            display: flex;
+            flex-direction: column; /* Organiza os inputs e botão verticalmente */
+            gap: 10px;
+            width: 100%; /* Ocupa a largura total */
+        }
+
+        .upload-controls input[type="text"],
+        .upload-controls input[type="file"] {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid var(--color-border-light);
+            border-radius: 5px;
+            background-color: var(--color-secondary);
+            color: var(--color-text-dark);
+            width: calc(100% - 22px); /* Largura total menos padding/borda */
+            box-sizing: border-box; /* Inclui padding e borda na largura */
+        }
+
+        .upload-controls button {
+            background-color: var(--color-button-upload);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+            width: 100%; /* Ocupa a largura total */
+        }
+        .upload-controls button:hover {
+            background-color: var(--color-button-upload-hover);
+        }
+
+        /* Seção de Listagem de Livros (Grid) */
+        .book-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Responsivo */
+            gap: 20px;
+            padding: 20px 0;
+        }
+
+        .book-item {
+            background-color: var(--color-card-light);
+            border: 1px solid var(--color-border-light);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .book-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .book-cover {
+            background-color: var(--color-primary); /* Simula uma capa */
+            height: 250px; /* Altura fixa para capas */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            word-break: break-all; /* Quebra palavras longas */
+            overflow: hidden;
+        }
+
+        .book-cover img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; /* Garante que a imagem se ajuste sem cortar */
+            display: block; /* Remove espaço extra abaixo da imagem */
+        }
+
+        .book-info {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1; /* Para que o conteúdo ocupe o espaço restante */
+        }
+
+        .book-info h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: var(--color-text-dark);
+            font-size: 1.1em;
+            white-space: nowrap; /* Evita quebra de linha */
+            overflow: hidden;
+            text-overflow: ellipsis; /* Adiciona '...' se o texto for muito longo */
+        }
+
+        .book-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: auto; /* Empurra para o final do card */
+        }
+
+        .book-actions button, .book-actions a {
+            flex: 1;
+            padding: 8px 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .book-actions .read-button {
+            background-color: var(--color-primary);
+            color: white;
+            border: none;
+        }
+        .book-actions .read-button:hover {
+            background-color: #0056b3;
+        }
+
+        .book-actions .delete-button {
+            background-color: var(--color-button-delete);
+            color: white;
+            border: none;
+        }
+        .book-actions .delete-button:hover {
+            background-color: var(--color-button-delete-hover);
+        }
+
+        /* Footer */
+        footer {
+            background-color: var(--color-header-light);
+            color: var(--color-secondary);
+            text-align: center;
+            padding: 20px 0;
+            margin-top: 40px;
+        }
+
+        /* Modo Dark */
+        body.dark-mode {
+            background-color: var(--color-background-dark);
+            color: var(--color-text-light);
+        }
+        body.dark-mode header {
+            background-color: var(--color-header-dark);
+        }
+        body.dark-mode .upload-section,
+        body.dark-mode .book-item {
+            background-color: var(--color-card-dark);
+            box-shadow: 0 2px 8px rgba(255,255,255,0.1);
+        }
+        body.dark-mode .upload-section h2 {
+            color: var(--color-primary); /* Mantém o azul no dark mode */
+        }
+        body.dark-mode .upload-controls input[type="text"],
+        body.dark-mode .upload-controls input[type="file"] {
+            background-color: #555;
+            border-color: var(--color-border-dark);
+            color: var(--color-text-light);
+        }
+        body.dark-mode .upload-controls button {
+            background-color: var(--color-primary); /* Azul também no dark mode */
+        }
+        body.dark-mode .upload-controls button:hover {
+            background-color: #0056b3;
+        }
+        body.dark-mode .book-info h3 {
+            color: var(--color-text-light);
+        }
+        body.dark-mode .book-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(255,255,255,0.2);
+        }
+        body.dark-mode footer {
+            background-color: var(--color-header-dark);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Minha Biblioteca Pessoal</h1>
+        </div>
+        <div class="header-controls">
+            <button class="dark-mode-toggle" id="darkModeToggle">Modo Dark</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <section class="upload-section">
+            <h2>Adicionar Novo Livro</h2>
+            <div class="upload-controls">
+                <input type="text" id="bookTitleInput" placeholder="Título do Livro (opcional)">
+                <input type="file" id="bookFileInput" accept=".pdf,.epub,.mobi,.txt,.doc,.docx">
+                <input type="file" id="coverFileInput" accept=".jpg,.jpeg,.png,.gif">
+                <button onclick="uploadBook()">Enviar Livro</button>
+            </div>
+        </section>
+
+        <section class="book-list-section">
+            <h2>Meus Livros</h2>
+            <div id="bookGrid" class="book-grid">
+                <p>Carregando livros...</p>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Minha Biblioteca Pessoal. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script>
+        const bookFileInput = document.getElementById('bookFileInput');
+        const coverFileInput = document.getElementById('coverFileInput');
+        const bookTitleInput = document.getElementById('bookTitleInput');
+        const bookGrid = document.getElementById('bookGrid');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+
+        // --- Funções de Dark Mode ---
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDarkMode);
+            darkModeToggle.textContent = isDarkMode ? 'Modo Claro' : 'Modo Dark';
+        }
+
+        // Carrega a preferência de dark mode ao iniciar
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedDarkMode = localStorage.getItem('darkMode');
+            if (savedDarkMode === 'true') {
+                document.body.classList.add('dark-mode');
+                darkModeToggle.textContent = 'Modo Claro';
+            } else {
+                darkModeToggle.textContent = 'Modo Dark';
+            }
+            loadBooks(); // Carrega os livros assim que o DOM estiver pronto
+        });
+        darkModeToggle.addEventListener('click', toggleDarkMode);
+
+
+        // --- Função de Upload de Livro e Capa ---
+        async function uploadBook() {
+            const bookFile = bookFileInput.files[0];
+            const coverFile = coverFileInput.files[0];
+            const title = bookTitleInput.value.trim();
+
+            if (!bookFile) {
+                alert('Por favor, selecione um arquivo de livro para enviar.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('bookFile', bookFile);
+
+            // Adiciona o título apenas se não estiver vazio
+            if (title !== '') {
+                formData.append('title', title);
+            }
+
+            // Adiciona o arquivo de capa apenas se foi selecionado
+            if (coverFile) {
+                formData.append('coverFile', coverFile);
+            }
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(result.message);
+                    bookFileInput.value = ''; // Limpa o input do arquivo do livro
+                    coverFileInput.value = ''; // Limpa o input do arquivo da capa
+                    bookTitleInput.value = ''; // Limpa o input do título
+                    loadBooks(); // Recarrega a lista de livros
+                } else {
+                    const errorData = await response.json();
+                    alert(`Erro no upload: ${errorData.error || 'Erro desconhecido'}`);
+                }
+            } catch (error) {
+                console.error('Erro ao fazer upload:', error);
+                alert('Erro ao conectar com o servidor para upload. Verifique se o servidor está rodando e acessível.');
+            }
+        }
+
+        // --- Função para Carregar e Exibir os Livros ---
+        async function loadBooks() {
+            bookGrid.innerHTML = '<p>Carregando livros...</p>'; // Mensagem de carregamento
+
+            try {
+                const response = await fetch('/books'); // GET para a rota /books no backend
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP: ${response.status}`);
+                }
+                const books = await response.json();
+
+                if (books.length === 0) {
+                    bookGrid.innerHTML = '<p>Nenhum livro encontrado. Comece a enviar!</p>';
+                    return;
+                }
+
+                bookGrid.innerHTML = ''; // Limpa o conteúdo antes de adicionar
+                books.forEach(book => {
+                    const bookItem = document.createElement('div');
+                    bookItem.className = 'book-item';
+                    bookItem.setAttribute('data-book-id', book.id);
+
+                    const bookCover = document.createElement('div');
+                    bookCover.className = 'book-cover';
+                    const coverImg = document.createElement('img');
+                    // Garante que a imagem carregue ou use o placeholder
+                    coverImg.src = book.coverFilename ? `/covers/${encodeURIComponent(book.coverFilename)}` : '/placeholder_cover.png';
+                    coverImg.alt = `Capa de ${book.title || book.originalFilename}`; // Altera para usar originalFilename se title for nulo
+                    // Adiciona um manipulador de erro para carregar o placeholder se a capa real falhar
+                    coverImg.onerror = function() {
+                        this.onerror = null; // Evita loop infinito
+                        this.src = '/placeholder_cover.png';
+                    };
+                    bookCover.appendChild(coverImg);
+                    bookItem.appendChild(bookCover);
+
+                    const bookInfo = document.createElement('div');
+                    bookInfo.className = 'book-info';
+
+                    const bookTitle = document.createElement('h3');
+                    bookTitle.textContent = book.title || book.originalFilename; // Exibe o título ou nome original se nulo
+                    bookInfo.appendChild(bookTitle);
+
+                    const bookActions = document.createElement('div');
+                    bookActions.className = 'book-actions';
+
+                    const readLink = document.createElement('a');
+                    readLink.href = `/read/${encodeURIComponent(book.filename)}`;
+                    readLink.target = "_blank"; // Abre em nova aba
+                    readLink.textContent = 'Ler Livro';
+                    readLink.className = 'read-button';
+                    bookActions.appendChild(readLink);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Excluir';
+                    deleteButton.className = 'delete-button';
+                    deleteButton.onclick = () => deleteBook(book.id, book.title || book.originalFilename); // Passa originalFilename se title for nulo
+                    bookActions.appendChild(deleteButton);
+
+                    bookInfo.appendChild(bookActions);
+                    bookItem.appendChild(bookInfo);
+                    bookGrid.appendChild(bookItem);
+                });
+
+            } catch (error) {
+                console.error('Erro ao carregar livros:', error);
+                bookGrid.innerHTML = `<p>Erro ao carregar livros: ${error.message}. Verifique o console do navegador e do servidor.</p>`;
+            }
+        }
+
+        // --- Função para Excluir um Livro ---
+        async function deleteBook(bookId, bookTitle) {
+            if (!confirm(`Tem certeza que deseja excluir o livro "${bookTitle}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/delete-book/${bookId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(result.message);
+                    const bookElement = document.querySelector(`[data-book-id="${bookId}"]`);
+                    if (bookElement) {
+                        bookElement.remove(); // Remove o elemento da interface
+                    }
+                } else {
+                    const errorData = await response.json();
+                    alert(`Erro ao excluir: ${errorData.error || errorData.message || 'Erro desconhecido'}`);
+                }
+            } catch (error) {
+                console.error('Erro na requisição de exclusão:', error);
+                alert('Erro ao excluir o livro. Verifique o console para mais detalhes.');
+            }
+        }
+    </script>
+</body>
+</html>
