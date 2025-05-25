@@ -3,114 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Minha Biblioteca Pessoal</title>
+    <title>Faça seu login.</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
     <style>
-        /* Variáveis CSS para cores */
-        :root {
-            --color-primary: #007bff; /* Azul vibrante */
-            --color-secondary: #f8f9fa; /* Branco/cinza claro */
-            --color-text-dark: #343a40; /* Texto escuro */
-            --color-text-light: #e9ecef; /* Texto claro */
-            --color-background-light: #f4f4f4; /* Fundo claro */
-            --color-background-dark: #212529; /* Fundo escuro */
-            --color-card-light: #ffffff; /* Card claro */
-            --color-card-dark: #495057; /* Card escuro */
-            --color-success: #28a745;
-            --color-error: #dc3545;
-        }
-
+        /* Reset básico e fontes */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
+            background: linear-gradient(180deg, #0F2027 0%, #203A43 50%, #2C5364 100%); /* Gradiente de fundo escuro */
+            color: #fff;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(to right top, #0a0a0a, #000000, #1a2a4a); /* Fundo escuro */
-            color: var(--color-text-light);
-            overflow: hidden; /* Para garantir que o fundo fique perfeito */
-            position: relative;
+            overflow: hidden; /* Evita barras de rolagem desnecessárias */
         }
 
-        /* Estilo para a imagem de fundo que você inspirou */
-        body::before {
-            content: '';
+        /* Imagem de fundo sutil (opcional, pode ser ajustada ou removida) */
+        .background-image {
             position: absolute;
             top: 0;
-            left: 50%; /* Começa na metade da tela */
-            width: 50%;
+            left: 0;
+            width: 100%;
             height: 100%;
-            background-image: url('https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=1770&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); /* Imagem de fundo */
+            background-image: url('https://images.unsplash.com/photo-1516979187457-637abb4f9353?q=80&w=1770&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); /* URL da sua imagem de fundo */
             background-size: cover;
             background-position: center;
-            filter: grayscale(80%) brightness(50%) blur(2px); /* Efeito para imagem */
-            z-index: 0;
+            opacity: 0.2; /* Opacidade para deixá-la sutil */
+            z-index: -1; /* Fica atrás do conteúdo */
         }
 
+        /* Container principal do formulário de login */
         .login-container {
-            background-color: var(--color-background-dark);
+            background-color: rgba(0, 0, 0, 0.6); /* Overlay escuro para a caixa de login */
             padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
-            text-align: center;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+            text-align: left; /* Alinhamento do texto padrão à esquerda */
             width: 90%;
-            max-width: 400px;
-            position: relative; /* Para ficar acima do background ::before */
-            z-index: 1;
+            max-width: 350px; /* Largura máxima para o container */
         }
 
+        /* Título "Faça seu login." */
         .login-container h1 {
-            color: var(--color-primary);
+            color: #fff;
             margin-bottom: 30px;
             font-size: 2.5em;
-            text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            text-align: center; /* Centraliza o título */
         }
 
-        .login-form label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: bold;
-            color: var(--color-text-light);
-            text-align: left; /* Alinha o texto do label à esquerda */
+        /* Grupo de formulário (label + input) */
+        .form-group {
+            margin-bottom: 25px;
         }
 
-        .login-form input[type="text"],
-        .login-form input[type="password"] {
-            width: calc(100% - 20px); /* 100% menos o padding */
+        .form-group label {
+            display: block; /* Cada label em sua própria linha */
+            color: #ddd; /* Cor mais clara para o label */
+            margin-bottom: 8px;
+        }
+
+        /* Estilo dos campos de input */
+        .form-group input {
+            width: calc(100% - 24px); /* 100% da largura menos o padding e o ícone */
             padding: 12px;
-            margin-bottom: 20px;
+            padding-left: 35px; /* Espaço para o ícone */
             border: 1px solid #555;
-            border-radius: 5px;
-            background-color: #333;
-            color: var(--color-text-light);
+            border-radius: 4px;
+            background-color: #333; /* Fundo escuro para o input */
+            color: #fff;
+            box-sizing: border-box; /* Inclui padding na largura total */
             font-size: 1em;
-            box-sizing: border-box; /* Inclui padding na largura */
         }
 
-        .login-form button {
-            background-color: var(--color-primary);
-            color: white;
-            padding: 12px 25px;
+        /* Efeito de foco para inputs */
+        .form-group input:focus {
+            outline: none;
+            border-color: #007bff; /* Borda azul ao focar */
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Sombra azul ao focar */
+        }
+
+        /* Link "Esqueci minha senha?" */
+        .forgot-password {
+            display: block;
+            color: #aaa;
+            font-size: 0.9em;
+            text-align: right; /* Alinha à direita */
+            margin-top: -10px; /* Ajuste de margem */
+            margin-bottom: 15px;
+            text-decoration: none;
+        }
+
+        .forgot-password:hover {
+            color: #fff;
+        }
+
+        /* Botão "Entrar" */
+        .login-button {
+            background: linear-gradient(to right, #007bff, #00b8ff); /* Gradiente azul */
+            color: #fff;
+            padding: 14px 20px;
             border: none;
-            border-radius: 5px;
+            border-radius: 4px;
             cursor: pointer;
             font-size: 1.1em;
-            width: 100%;
-            transition: background-color 0.3s ease, transform 0.2s ease;
+            width: 100%; /* Largura total */
+            transition: background 0.3s ease;
         }
 
-        .login-form button:hover {
-            background-color: #0056b3;
-            transform: translateY(-2px);
+        .login-button:hover {
+            background: linear-gradient(to right, #0056b3, #0086b3); /* Escurece o gradiente ao passar o mouse */
         }
 
+        /* Link "Ainda não tenho uma conta?" */
+        .signup-link {
+            display: block;
+            color: #aaa;
+            font-size: 0.9em;
+            text-align: center;
+            margin-top: 20px;
+            text-decoration: none;
+        }
+
+        .signup-link:hover {
+            color: #fff;
+        }
+
+        /* Estilo para ícones dentro dos inputs */
+        .input-wrapper {
+            position: relative; /* Para posicionar o ícone absolutamente dentro */
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 10px; /* Posição do ícone à esquerda */
+            top: 50%;
+            transform: translateY(-50%); /* Centraliza verticalmente */
+            color: #777; /* Cor do ícone */
+            font-size: 1em;
+        }
+
+        /* Mensagens de erro/sucesso */
         .message {
             margin-top: 20px;
             padding: 10px;
             border-radius: 5px;
             display: none; /* Escondido por padrão */
+            text-align: center; /* Centraliza o texto da mensagem */
+            font-weight: bold;
         }
 
         .message.show {
@@ -119,15 +160,16 @@
 
         .message.success {
             background-color: rgba(40, 167, 69, 0.2);
-            color: var(--color-success);
-            border: 1px solid var(--color-success);
+            color: #28a745; /* Verde */
+            border: 1px solid #28a745;
         }
 
         .message.error {
             background-color: rgba(220, 53, 69, 0.2);
-            color: var(--color-error);
-            border: 1px solid var(--color-error);
+            color: #dc3545; /* Vermelho */
+            border: 1px solid #dc3545;
         }
+
 
         /* Responsividade */
         @media (max-width: 480px) {
@@ -138,26 +180,24 @@
             .login-container h1 {
                 font-size: 2em;
             }
-            body::before {
-                width: 100%; /* Em telas pequenas, a imagem pode ocupar a tela toda */
-                left: 0;
-            }
         }
     </style>
 </head>
 <body>
+    <div class="background-image"></div>
     <div class="login-container">
-        <h1>Login</h1>
-        <form id="loginForm" class="login-form">
-            <label for="username">Usuário:</label>
-            <input type="text" id="username" name="username" required>
-
-            <label for="password">Senha:</label>
-            <input type="password" id="password" name="password" required>
-
-            <button type="submit">Entrar</button>
-            <div id="loginMessage" class="message"></div>
-        </form>
+        <h1>Faça seu login.</h1>
+        <form id="loginForm">
+            <div class="form-group input-wrapper">
+                <span class="input-icon">✉</span> <input type="text" id="username" name="username" placeholder="Email" required>
+            </div>
+            <div class="form-group input-wrapper">
+                <span class="input-icon">🔒</span> <input type="password" id="password" name="password" placeholder="Senha" required>
+            </div>
+            <a href="#" class="forgot-password">Esqueci minha senha?</a>
+            <button type="submit" class="login-button">Entrar</button>
+            <div id="loginMessage" class="message"></div> </form>
+        <a href="#" class="signup-link">Ainda não tenho uma conta?</a>
     </div>
 
     <script>
@@ -167,9 +207,9 @@
             const password = document.getElementById('password').value;
             const messageDiv = document.getElementById('loginMessage');
 
-            messageDiv.classList.remove('show', 'error', 'success'); // Limpa mensagens anteriores
+            messageDiv.classList.remove('show', 'error', 'success'); // Limpa e esconde mensagens anteriores
             messageDiv.textContent = '';
-            messageDiv.style.display = 'none'; // Esconde para reexibir
+            messageDiv.style.display = 'none';
 
             try {
                 const response = await fetch('/login', {
@@ -188,7 +228,7 @@
                     messageDiv.style.display = 'block';
                     // Redirecionar para a página da biblioteca após um pequeno atraso
                     setTimeout(() => {
-                        window.location.href = '/library'; // Nova rota para a biblioteca
+                        window.location.href = '/library';
                     }, 1000);
                 } else {
                     messageDiv.textContent = data.error || 'Erro de login desconhecido.';
