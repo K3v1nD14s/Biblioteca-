@@ -1,27 +1,29 @@
 import os
-from flask import Flask, request, send_from_directory, jsonify, session, redirect, url_for, Response
+from flask import Flask, request, send_from_directory, jsonify, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from uuid import uuid4
 from datetime import datetime
 from functools import wraps
 
-# Importações do Cloudinary e requests
-import cloudinary
-import cloudinary.uploader
-from cloudinary.utils import cloudinary_url
-import requests # Importação adicionada para fazer requisições HTTP
-
 # --- Configuração da Aplicação Flask ---
 app = Flask(__name__, static_folder='public')
 
-# Configuração do banco de dados SQLAlchemy
-# Usa a variável de ambiente DATABASE_URL fornecida pelo Render para PostgreSQL.
-# Se a variável não estiver definida (ex: para desenvolvimento local), usa SQLite.
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///library.db'
+# Define os diretórios para uploads de livros e capas (armazenamento local)
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['COVERS_FOLDER'] = 'covers'
+
+# Garante que as pastas de upload e covers existem e as cria se não existirem
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
+if not os.path.exists(app.config['COVERS_FOLDER']):
+    os.makedirs(app.config['COVERS_FOLDER'])
+
+# Configuração do banco de dados SQLite (armazenamento local, não persistente no Render Free)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///library.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Limite máximo de tamanho para upload de arquivos (200 MB) - AUMENTADO AQUI
-app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024 # Agora 200 MB, antes 50 MB
+# Limite máximo de tamanho para upload de arquivos (200 MB)
+app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024
 
 # CHAVE SECRETA: ESSENCIAL PARA A SEGURANÇA DAS SESSÕES DO FLASK!
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'uma_chave_secreta_muito_segura_e_aleatoria_para_o_termo_ux_fallback_dev')
@@ -32,60 +34,29 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
 
 db = SQLAlchemy(app)
 
-# --- Configuração do Cloudinary ---
-# As credenciais são obtidas das variáveis de ambiente definidas no Render.
-cloudinary.config(
-    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
-    api_key=os.environ.get('CLOUDINARY_API_KEY'),
-    api_secret=os.environ.get('CLOUDINARY_API_SECRET')
-)
-
 # --- Definição do Modelo do Banco de Dados ---
 class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.Text)
-    # 'filename' agora armazena o Public ID do arquivo do livro no Cloudinary
+    # 'filename' agora armazena o nome do arquivo local
     filename = db.Column(db.Text, nullable=False)
     original_filename = db.Column(db.Text, nullable=False)
-    # 'cover_filename' agora armazena o Public ID da capa no Cloudinary
+    # 'cover_filename' agora armazena o nome da capa local
     cover_filename = db.Column(db.Text)
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
-        cover_cloud_url = None
-        if self.cover_filename:
-            # Gera a URL da capa no Cloudinary, com transformações para exibição
-            cover_cloud_url, options = cloudinary_url(
-                self.cover_filename,
-                resource_type="image",
-                width=200,    # Largura da imagem da capa
-                height=300,   # Altura da imagem da capa
-                crop="fill"   # Preenche a área, cortando se necessário
-            )
-        else:
-            # Fallback para uma capa de placeholder se não houver capa
-            cover_cloud_url = url_for('static', filename='placeholder_cover.png')
-
-        # Determina a extensão do arquivo original para decidir como servir o livro
-        file_extension = self.original_filename.lower().split('.')[-1]
-        book_read_url = None
-
-        if file_extension == 'pdf':
-            # Para PDFs, usa a rota proxy do Flask para forçar a visualização inline
-            book_read_url = url_for('view_pdf', public_id=self.filename)
-        else:
-            # Para outros formatos (EPUB, DOCX, TXT), usa a URL direta do Cloudinary.
-            # Estes formatos geralmente resultam em download, pois navegadores não os exibem nativamente.
-            book_cloud_url, options = cloudinary_url(self.filename, resource_type="raw")
-            book_read_url = book_cloud_url
+        # Gera URLs para servir arquivos localmente via rotas Flask
+        cover_url = url_for('serve_cover', filename=self.cover_filename) if self.cover_filename else url_for('static', filename='placeholder_cover.png')
+        read_url = url_for('serve_book', filename=self.filename)
 
         return {
             'id': self.id,
             'title': self.title,
-            'filename': self.filename, # Mantém o public_id para operações futuras
+            'filename': self.filename,
             'original_filename': self.original_filename,
-            'cover_url': cover_cloud_url, # URL da capa para o frontend
-            'read_url': book_read_url # URL para o frontend (proxy Flask para PDF, Cloudinary direto para outros)
+            'cover_url': cover_url,
+            'read_url': read_url
         }
 
 # Garante que as tabelas do banco de dados são criadas quando o aplicativo inicia.
@@ -105,8 +76,10 @@ def login_required(f):
 
 @app.route('/')
 def serve_login():
+    # Se o usuário já estiver logado, redireciona diretamente para a biblioteca
     if 'logged_in' in session and session['logged_in']:
         return redirect(url_for('serve_library'))
+    # Caso contrário, serve o arquivo index.html da pasta 'public'
     return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/login', methods=['POST'])
@@ -142,39 +115,25 @@ def upload_book():
 
     if book_file:
         original_filename = book_file.filename
-        book_title = request.form.get('title', original_filename.split('.')[0])
-
-        book_public_id = None
-        try:
-            upload_result = cloudinary.uploader.upload(
-                book_file,
-                resource_type="raw",
-                folder="library_books",
-                public_id=f"{book_title.replace(' ', '_').lower()}_{uuid4()}"
-            )
-            book_public_id = upload_result['public_id']
-        except Exception as e:
-            print(f"Erro ao enviar o livro para o Cloudinary: {str(e)}")
-            return jsonify({'error': f'Erro ao enviar o livro para o Cloudinary: {str(e)}'}), 500
-
-        cover_public_id = None
+        unique_filename = f"{uuid4()}_{original_filename}"
+        book_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        
+        cover_filename = None
         cover_file = request.files.get('cover_file')
         if cover_file and cover_file.filename != '':
-            try:
-                cover_upload_result = cloudinary.uploader.upload(
-                    cover_file,
-                    folder="library_covers",
-                    public_id=f"cover_{book_public_id}"
-                )
-                cover_public_id = cover_upload_result['public_id']
-            except Exception as e:
-                print(f"Aviso: Erro ao enviar a capa para o Cloudinary: {str(e)}")
+            original_cover_filename = cover_file.filename
+            unique_cover_filename = f"{uuid4()}_{original_cover_filename}"
+            cover_path = os.path.join(app.config['COVERS_FOLDER'], unique_cover_filename)
+            cover_file.save(cover_path) # Salva a capa localmente
+            cover_filename = unique_cover_filename
+
+        book_file.save(book_path) # Salva o livro localmente
 
         new_book = Book(
-            title=book_title,
-            filename=book_public_id,
+            title=request.form.get('title', original_filename.split('.')[0]),
+            filename=unique_filename,
             original_filename=original_filename,
-            cover_filename=cover_public_id
+            cover_filename=cover_filename
         )
         db.session.add(new_book)
         db.session.commit()
@@ -187,44 +146,31 @@ def get_books():
     books = Book.query.order_by(Book.upload_date.desc()).all()
     return jsonify([book.to_dict() for book in books]), 200
 
-# ROTA: Proxy para visualização de PDFs inline (mantida a depuração)
-@app.route('/view_pdf/<public_id>')
+# Rota para servir arquivos de livro (PDFs, etc.) do armazenamento local
+@app.route('/read/<filename>')
 @login_required
-def view_pdf(public_id):
-    # DEBUG: Confirma que a rota foi acessada e qual public_id foi recebido
-    print(f"DEBUG: Rota /view_pdf/ acessada com public_id: {public_id}")
+def serve_book(filename):
+    # Proteção para evitar travessia de diretório
+    base_dir = os.path.abspath(app.config['UPLOAD_FOLDER'])
+    full_path = os.path.abspath(os.path.join(base_dir, filename))
+    if not full_path.startswith(base_dir):
+        return "Acesso negado", 403
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# Rota para servir arquivos de capa do armazenamento local
+@app.route('/covers/<filename>')
+@login_required
+def serve_cover(filename):
+    # Proteção para evitar travessia de diretório
+    base_dir = os.path.abspath(app.config['COVERS_FOLDER'])
+    full_path = os.path.abspath(os.path.join(base_dir, filename))
+    if not full_path.startswith(base_dir):
+        return "Acesso negado", 403
     try:
-        # Gera a URL direta do Cloudinary para o arquivo PDF raw
-        pdf_url, _ = cloudinary_url(public_id, resource_type="raw")
-        print(f"DEBUG: URL do Cloudinary gerada: {pdf_url}")
-
-        # Busca o conteúdo do PDF do Cloudinary
-        response = requests.get(pdf_url, stream=True)
-        response.raise_for_status() # Levanta uma exceção para códigos de status HTTP ruins
-
-        # Obtém o nome original do arquivo do banco de dados para o cabeçalho Content-Disposition
-        book = Book.query.filter_by(filename=public_id).first()
-        if not book:
-            print(f"ERRO: Livro com public_id {public_id} não encontrado no DB.")
-            return "Livro não encontrado.", 404
-        
-        original_filename = book.original_filename
-        
-        # Define os cabeçalhos para forçar a visualização inline do PDF no navegador
-        headers = {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': f'inline; filename="{original_filename}"'
-        }
-        print(f"DEBUG: Servindo PDF: {original_filename}")
-        # Retorna o conteúdo do PDF como uma resposta Flask, em chunks
-        return Response(response.iter_content(chunk_size=8192), headers=headers)
-
-    except requests.exceptions.RequestException as e:
-        print(f"ERRO: Erro ao buscar PDF do Cloudinary: {e}")
-        return "Erro ao carregar o PDF.", 500
-    except Exception as e:
-        print(f"ERRO: Erro inesperado ao visualizar PDF: {e}")
-        return "Erro interno do servidor.", 500
+        return send_from_directory(app.config['COVERS_FOLDER'], filename)
+    except Exception:
+        # Serve uma imagem de placeholder se a capa específica não for encontrada
+        return send_from_directory(app.static_folder, 'placeholder_cover.png')
 
 @app.route('/delete-book/<int:book_id>', methods=['DELETE'])
 @login_required
@@ -234,13 +180,16 @@ def delete_book(book_id):
         return jsonify({'message': 'Livro não encontrado no banco de dados.'}), 404
 
     try:
-        # Deleta o arquivo do livro do Cloudinary usando o Public ID
-        if book_to_delete.filename:
-            cloudinary.uploader.destroy(book_to_delete.filename, resource_type="raw")
-
-        # Deleta a capa do Cloudinary usando o Public ID
+        # Remove o arquivo do livro do armazenamento local
+        book_path = os.path.join(app.config['UPLOAD_FOLDER'], book_to_delete.filename)
+        if os.path.exists(book_path):
+            os.remove(book_path)
+        
+        # Remove o arquivo da capa do armazenamento local
         if book_to_delete.cover_filename:
-            cloudinary.uploader.destroy(book_to_delete.cover_filename, resource_type="image")
+            cover_path = os.path.join(app.config['COVERS_FOLDER'], book_to_delete.cover_filename)
+            if os.path.exists(cover_path):
+                os.remove(cover_path)
 
         db.session.delete(book_to_delete)
         db.session.commit()
