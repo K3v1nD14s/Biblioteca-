@@ -5,58 +5,88 @@ from uuid import uuid4
 from datetime import datetime
 from functools import wraps
 
+# Importações do Cloudinary
+import cloudinary
+import cloudinary.uploader
+from cloudinary.utils import cloudinary_url
+
 # --- Configuração da Aplicação Flask ---
 app = Flask(__name__, static_folder='public')
 
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['COVERS_FOLDER'] = 'covers'
-
-# Garante que as pastas de upload e covers existem e as cria se não existirem
-# Isso é crucial para o ambiente de produção como o Render
-if not os.path.exists(app.config['UPLOAD_FOLDER']):
-    os.makedirs(app.config['UPLOAD_FOLDER'])
-if not os.path.exists(app.config['COVERS_FOLDER']):
-    os.makedirs(app.config['COVERS_FOLDER'])
-
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///library.db'
+# Configuração do banco de dados SQLAlchemy
+# Usa a variável de ambiente DATABASE_URL fornecida pelo Render para PostgreSQL.
+# Se a variável não estiver definida (ex: para desenvolvimento local), usa SQLite.
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///library.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024 # Limite de 50MB para uploads
 
-# CHAVE SECRETA: ESSENCIAL PARA SESSÕES!
-# Use os.environ.get para pegar a chave do ambiente (Render) ou um valor padrão (local)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'uma_chave_secreta_muito_segura_e_aleatoria_para_o_termo_ux')
+# Limite máximo de tamanho para upload de arquivos (50 MB)
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
-# Variáveis de ambiente para credenciais de admin
+# CHAVE SECRETA: ESSENCIAL PARA A SEGURANÇA DAS SESSÕES DO FLASK!
+# Este valor DEVE ser definido como uma variável de ambiente no Render.
+# O segundo argumento de os.environ.get é um valor padrão para desenvolvimento local.
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'uma_chave_secreta_muito_segura_e_aleatoria_para_o_termo_ux_fallback_dev')
+
+# Credenciais de ADMIN para login. EM PRODUÇÃO, SEMPRE USE VARIÁVEIS DE AMBIENTE.
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123') # Troque isso em produção!
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
 
 db = SQLAlchemy(app)
+
+# --- Configuração do Cloudinary ---
+# As credenciais são obtidas das variáveis de ambiente definidas no Render.
+cloudinary.config(
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret=os.environ.get('CLOUDINARY_API_SECRET')
+)
 
 # --- Definição do Modelo do Banco de Dados ---
 class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.Text)
+    # 'filename' agora armazena o Public ID do arquivo do livro no Cloudinary
     filename = db.Column(db.Text, nullable=False)
     original_filename = db.Column(db.Text, nullable=False)
+    # 'cover_filename' agora armazena o Public ID da capa no Cloudinary
     cover_filename = db.Column(db.Text)
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
+        # Gera a URL do livro (PDF, EPUB, etc.) no Cloudinary usando o Public ID
+        book_cloud_url, options = cloudinary_url(self.filename, resource_type="raw")
+
+        cover_cloud_url = None
+        if self.cover_filename:
+            # Gera a URL da capa no Cloudinary, com transformações para exibição
+            cover_cloud_url, options = cloudinary_url(
+                self.cover_filename,
+                resource_type="image",
+                width=200,    # Largura da imagem da capa
+                height=300,   # Altura da imagem da capa
+                crop="fill"   # Preenche a área, cortando se necessário
+            )
+        else:
+            # Fallback para uma capa de placeholder se não houver capa
+            # 'url_for' aqui serve um arquivo estático da pasta 'public'
+            cover_cloud_url = url_for('static', filename='placeholder_cover.png')
+
         return {
             'id': self.id,
             'title': self.title,
-            'filename': self.filename,
+            'filename': self.filename, # Mantém o public_id para operações futuras
             'original_filename': self.original_filename,
-            'cover_url': url_for('serve_cover', filename=self.cover_filename) if self.cover_filename else url_for('serve_cover', filename='placeholder_cover.png'),
-            'read_url': url_for('serve_book', filename=self.filename)
+            'cover_url': cover_cloud_url, # URL da capa para o frontend
+            'read_url': book_cloud_url # URL do livro para o frontend
         }
 
-# Garante que as tabelas são criadas quando o app inicia, se não existirem
+# Garante que as tabelas do banco de dados são criadas quando o aplicativo inicia.
 # Isso é executado ao carregar o módulo, o que o Gunicorn fará.
+# Em um ambiente de produção com PostgreSQL, as tabelas serão criadas na primeira vez.
 with app.app_context():
     db.create_all()
 
-# --- Funções Auxiliares ---
+# --- Decorador para rotas protegidas (exige login) ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -84,7 +114,7 @@ def login():
         session['logged_in'] = True
         return jsonify({'message': 'Login bem-sucedido!'}), 200
     else:
-        session['logged_in'] = False # Garante que a sessão não está logada em caso de falha
+        session['logged_in'] = False
         return jsonify({'error': 'Nome de usuário ou senha incorretos.'}), 401
 
 @app.route('/logout')
@@ -93,12 +123,12 @@ def logout():
     return redirect(url_for('serve_login'))
 
 @app.route('/library')
-@login_required # Protege esta rota
+@login_required
 def serve_library():
     return send_from_directory(app.static_folder, 'library.html')
 
 @app.route('/upload-book', methods=['POST'])
-@login_required # Protege esta rota
+@login_required
 def upload_book():
     if 'book_file' not in request.files:
         return jsonify({'error': 'Nenhum arquivo de livro selecionado.'}), 400
@@ -108,24 +138,45 @@ def upload_book():
 
     if book_file:
         original_filename = book_file.filename
-        unique_filename = f"{uuid4()}_{original_filename}"
-        book_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-        book_file.save(book_path)
+        # Pega o título do formulário ou usa o nome do arquivo como fallback
+        book_title = request.form.get('title', original_filename.split('.')[0])
 
+        book_public_id = None
+        try:
+            # Faz o upload do arquivo do livro para o Cloudinary.
+            # resource_type="raw" é para arquivos que não são imagens (PDFs, EPUBs).
+            upload_result = cloudinary.uploader.upload(
+                book_file,
+                resource_type="raw",
+                folder="library_books", # Pasta no Cloudinary para organizar
+                public_id=f"{book_title.replace(' ', '_').lower()}_{uuid4()}" # ID público único
+            )
+            book_public_id = upload_result['public_id']
+        except Exception as e:
+            print(f"Erro ao enviar o livro para o Cloudinary: {str(e)}")
+            return jsonify({'error': f'Erro ao enviar o livro para o Cloudinary: {str(e)}'}), 500
+
+        cover_public_id = None
         cover_file = request.files.get('cover_file')
-        cover_filename = None
         if cover_file and cover_file.filename != '':
-            original_cover_filename = cover_file.filename
-            unique_cover_filename = f"{uuid4()}_{original_cover_filename}"
-            cover_path = os.path.join(app.config['COVERS_FOLDER'], unique_cover_filename)
-            cover_file.save(cover_path)
-            cover_filename = unique_cover_filename
+            try:
+                # Faz o upload do arquivo de capa para o Cloudinary.
+                # resource_type padrão é 'image'.
+                cover_upload_result = cloudinary.uploader.upload(
+                    cover_file,
+                    folder="library_covers", # Pasta no Cloudinary para capas
+                    public_id=f"cover_{book_public_id}" # ID público para a capa, relacionado ao livro
+                )
+                cover_public_id = cover_upload_result['public_id']
+            except Exception as e:
+                print(f"Aviso: Erro ao enviar a capa para o Cloudinary: {str(e)}")
+                # Não impede o upload do livro se a capa falhar, apenas loga o erro.
 
         new_book = Book(
-            title=request.form.get('title', original_filename),
-            filename=unique_filename,
+            title=book_title,
+            filename=book_public_id, # Armazena o Public ID do livro no Cloudinary
             original_filename=original_filename,
-            cover_filename=cover_filename
+            cover_filename=cover_public_id # Armazena o Public ID da capa no Cloudinary
         )
         db.session.add(new_book)
         db.session.commit()
@@ -133,49 +184,29 @@ def upload_book():
     return jsonify({'error': 'Erro desconhecido ao enviar o livro.'}), 500
 
 @app.route('/books', methods=['GET'])
-@login_required # Protege esta rota
+@login_required
 def get_books():
     books = Book.query.order_by(Book.upload_date.desc()).all()
     return jsonify([book.to_dict() for book in books]), 200
 
-@app.route('/read/<filename>')
-@login_required # Protege esta rota
-def serve_book(filename):
-    # Proteção para evitar travessia de diretório
-    if not os.path.isabs(filename) and os.path.abspath(os.path.join(app.config['UPLOAD_FOLDER'], filename)).startswith(os.path.abspath(app.config['UPLOAD_FOLDER'])):
-        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-    return "Acesso negado", 403 # Retorna 403 para acesso negado se o caminho não for seguro
+# As rotas serve_book e serve_cover foram removidas, pois os arquivos agora são servidos diretamente pelo Cloudinary.
+# O frontend usará as URLs geradas pelo método to_dict() do modelo Book.
 
-@app.route('/covers/<filename>')
-@login_required # Protege esta rota
-def serve_cover(filename):
-    # Proteção para evitar travessia de diretório
-    if not os.path.isabs(filename) and os.path.abspath(os.path.join(app.config['COVERS_FOLDER'], filename)).startswith(os.path.abspath(app.config['COVERS_FOLDER'])):
-        return send_from_directory(app.config['COVERS_FOLDER'], filename)
-    try:
-        return send_from_directory(app.config['COVERS_FOLDER'], filename)
-    except Exception:
-        # Serve uma imagem de placeholder se a capa não for encontrada ou houver erro
-        return send_from_directory(app.static_folder, 'placeholder_cover.png')
-
-
-# Rota para excluir um livro
 @app.route('/delete-book/<int:book_id>', methods=['DELETE'])
-@login_required # Protege esta rota
+@login_required
 def delete_book(book_id):
     book_to_delete = Book.query.get(book_id)
     if not book_to_delete:
         return jsonify({'message': 'Livro não encontrado no banco de dados.'}), 404
 
     try:
-        book_path = os.path.join(app.config['UPLOAD_FOLDER'], book_to_delete.filename)
-        if os.path.exists(book_path):
-            os.remove(book_path)
-        
+        # Deleta o arquivo do livro do Cloudinary usando o Public ID
+        if book_to_delete.filename:
+            cloudinary.uploader.destroy(book_to_delete.filename, resource_type="raw")
+
+        # Deleta a capa do Cloudinary usando o Public ID
         if book_to_delete.cover_filename:
-            cover_path = os.path.join(app.config['COVERS_FOLDER'], book_to_delete.cover_filename)
-            if os.path.exists(cover_path):
-                os.remove(cover_path)
+            cloudinary.uploader.destroy(book_to_delete.cover_filename, resource_type="image")
 
         db.session.delete(book_to_delete)
         db.session.commit()
@@ -185,7 +216,7 @@ def delete_book(book_id):
         db.session.rollback()
         return jsonify({'error': f'Erro ao excluir livro: {str(e)}'}), 500
 
-# Não execute app.run() em ambiente de produção (Render)
-# O Gunicorn é responsável por iniciar o aplicativo
+# Este bloco é executado apenas quando o script é rodado diretamente (ex: python app.py).
+# No Render, o Gunicorn é responsável por iniciar o aplicativo, então app.run() não é usado.
 # if __name__ == '__main__':
 #     app.run(debug=True)
