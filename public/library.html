@@ -6,15 +6,13 @@
     <title>Minha Biblioteca - Kinokuniya Inspired</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
     <style>
-        /* Variáveis CSS para cores */
+        /* Variáveis CSS para cores do tema Dark (Padrão) */
         :root {
             --color-primary: #007bff; /* Azul vibrante */
             --color-secondary: #f8f9fa; /* Branco/cinza claro */
             --color-text-dark: #343a40; /* Texto escuro */
             --color-text-light: #e9ecef; /* Texto claro */
-            --color-background-light: #f4f4f4; /* Fundo claro */
             --color-background-dark: #212529; /* Fundo escuro */
-            --color-card-light: #ffffff; /* Card claro */
             --color-card-dark: #495057; /* Card escuro */
             --color-button-delete: #dc3545; /* Vermelho para excluir */
             --color-button-delete-hover: #c82333;
@@ -22,51 +20,97 @@
             --color-button-upload-hover: #218838;
             --color-success: #28a745;
             --color-error: #dc3545;
+            --body-bg: linear-gradient(to right top, #0a0a0a, #000000, #1a2a4a);
+            --container-bg: var(--color-background-dark);
+            --header-color: var(--color-primary);
+            --upload-section-bg: var(--color-card-dark);
+            --input-bg: #333;
+            --input-border: #555;
+            --book-item-bg: var(--color-card-dark);
+            --book-title-color: var(--color-text-light);
+            --toggle-button-color: #f0c419; /* Cor do ícone de sol */
+            --toggle-button-bg: #333;
+        }
+
+        /* Tema Light Mode */
+        body.light-mode {
+            --color-primary: #0056b3; /* Azul mais escuro para light mode */
+            --color-secondary: #343a40; /* Cinza escuro para texto principal */
+            --color-text-dark: #f8f9fa; /* Invertido */
+            --color-text-light: #343a40; /* Invertido */
+            --color-background-dark: #ffffff; /* Fundo branco */
+            --color-card-dark: #f0f0f0; /* Card cinza claro */
+            --color-button-delete: #c82333;
+            --color-button-delete-hover: #a71d2a;
+            --color-button-upload: #218838;
+            --color-button-upload-hover: #1e7033;
+            --color-success: #1e7e34;
+            --color-error: #b8212e;
+            --body-bg: linear-gradient(to right top, #e0e0e0, #f0f0f0, #ffffff);
+            --container-bg: #ffffff;
+            --header-color: var(--color-primary);
+            --upload-section-bg: #f8f8f8;
+            --input-bg: #e9ecef;
+            --input-border: #ced4da;
+            --book-item-bg: #ffffff;
+            --book-title-color: var(--color-text-light);
+            --toggle-button-color: #495057; /* Cor do ícone de lua */
+            --toggle-button-bg: #ccc;
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 20px;
-            background: linear-gradient(to right top, #0a0a0a, #000000, #1a2a4a); /* Fundo escuro */
+            background: var(--body-bg);
             color: var(--color-text-light);
             line-height: 1.6;
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: flex-start; /* Alinha no topo para que o conteúdo não se espalhe muito */
-            box-sizing: border-box; /* Inclui padding na largura/altura total */
+            align-items: flex-start;
+            box-sizing: border-box;
+            transition: background 0.5s ease, color 0.5s ease; /* Transição suave de tema */
         }
 
         .container {
             width: 100%;
             max-width: 1200px;
-            background-color: var(--color-background-dark);
+            background-color: var(--container-bg);
             padding: 30px;
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
             box-sizing: border-box;
-            position: relative; /* Para posicionamento absoluto do botão de logout */
+            position: relative;
+            transition: background-color 0.5s ease, box-shadow 0.5s ease;
         }
 
         header {
             text-align: center;
             margin-bottom: 30px;
-            color: var(--color-primary);
-            position: relative; /* Para o botão de logout dentro do header */
+            color: var(--header-color);
+            position: relative; /* Para posicionar botões dentro */
+            padding-top: 50px; /* Espaço para os botões no topo */
         }
 
         header h1 {
             font-size: 2.8em;
             margin-bottom: 10px;
             text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            transition: color 0.5s ease;
         }
 
-        .logout-button {
-            position: absolute; /* Posiciona o botão em relação ao header */
-            top: 0; /* Alinha no topo do header */
-            right: 0; /* Alinha à direita do header */
-            background-color: var(--color-button-delete); /* Vermelho padrão para logout */
+        /* Botões de Ação no Header (Logout e Dark Mode) */
+        .header-actions {
+            position: absolute;
+            top: 20px; /* 20px do topo */
+            right: 20px; /* 20px da direita */
+            display: flex;
+            gap: 10px; /* Espaço entre os botões */
+        }
+
+        .action-button {
+            background-color: var(--color-button-delete); /* Padrão para logout */
             color: white;
             padding: 10px 15px;
             border: none;
@@ -74,49 +118,78 @@
             cursor: pointer;
             font-size: 1em;
             transition: background-color 0.3s ease;
+            white-space: nowrap; /* Evita que o texto quebre */
         }
 
+        .logout-button {
+            background-color: var(--color-button-delete);
+        }
         .logout-button:hover {
             background-color: var(--color-button-delete-hover);
         }
 
+        .theme-toggle-button {
+            background-color: var(--toggle-button-bg); /* Cor de fundo do botão de tema */
+            color: var(--toggle-button-color); /* Cor do ícone */
+            font-size: 1.2em; /* Tamanho do ícone */
+            padding: 10px; /* Padding ajustado para ícone */
+            width: 45px; /* Largura fixa para ícone */
+            height: 45px; /* Altura fixa para ícone */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%; /* Botão redondo */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .theme-toggle-button:hover {
+            opacity: 0.8;
+        }
+        
+        /* Ícones de sol e lua */
+        .light-mode .theme-toggle-button::before { content: '🌙'; } /* Lua para Light Mode */
+        .theme-toggle-button::before { content: '☀️'; } /* Sol para Dark Mode */
+
+
         .upload-section {
-            background-color: var(--color-card-dark);
+            background-color: var(--upload-section-bg);
             padding: 25px;
             border-radius: 8px;
             margin-bottom: 30px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            text-align: center; /* Centraliza os elementos do formulário */
+            text-align: center;
+            transition: background-color 0.5s ease, box-shadow 0.5s ease;
         }
 
         .upload-section h2 {
             color: var(--color-text-light);
             margin-bottom: 20px;
             font-size: 1.8em;
+            transition: color 0.5s ease;
         }
 
         .upload-form label {
             display: block;
             margin-bottom: 8px;
             color: var(--color-text-light);
-            text-align: left; /* Alinha o texto do label à esquerda */
+            text-align: left;
+            transition: color 0.5s ease;
         }
 
         .upload-form input[type="text"],
         .upload-form input[type="file"] {
-            width: calc(100% - 20px); /* 100% menos o padding */
+            width: calc(100% - 20px);
             padding: 10px;
             margin-bottom: 15px;
-            border: 1px solid #555;
+            border: 1px solid var(--input-border);
             border-radius: 5px;
-            background-color: #333;
+            background-color: var(--input-bg);
             color: var(--color-text-light);
-            box-sizing: border-box; /* Inclui padding na largura */
+            box-sizing: border-box;
+            transition: background-color 0.5s ease, border-color 0.5s ease, color 0.5s ease;
         }
 
         .upload-form input[type="file"] {
-            padding: 5px; /* Menor padding para input file */
-            background-color: #444; /* Cor diferente para input file */
+            padding: 5px;
             cursor: pointer;
         }
 
@@ -139,7 +212,7 @@
             margin-top: 20px;
             padding: 10px;
             border-radius: 5px;
-            display: none; /* Escondido por padrão */
+            display: none;
         }
 
         .message.show {
@@ -163,11 +236,11 @@
             grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 25px;
             padding: 20px 0;
-            justify-content: center; /* Centraliza os itens na grade */
+            justify-content: center;
         }
 
         .book-item {
-            background-color: var(--color-card-dark);
+            background-color: var(--book-item-bg);
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
@@ -175,48 +248,50 @@
             padding: 15px;
             display: flex;
             flex-direction: column;
-            justify-content: space-between; /* Empurra o botão de excluir para o final */
-            position: relative; /* Para o botão de excluir */
+            justify-content: space-between;
+            position: relative;
+            transition: background-color 0.5s ease, box-shadow 0.5s ease;
         }
 
         .book-item img {
             max-width: 100%;
-            height: 200px; /* Altura fixa para capas */
-            object-fit: cover; /* Recorta a imagem para preencher o espaço */
+            height: 200px;
+            object-fit: cover;
             border-radius: 5px;
             margin-bottom: 10px;
-            display: block; /* Remove espaço extra abaixo da imagem */
-            margin-left: auto; /* Centraliza a imagem */
-            margin-right: auto; /* Centraliza a imagem */
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .book-item h3 {
             font-size: 1.2em;
-            color: var(--color-text-light);
+            color: var(--book-title-color);
             margin: 10px 0;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            transition: color 0.5s ease;
         }
 
         .book-item .actions {
             margin-top: 15px;
             display: flex;
-            flex-direction: column; /* Botões um abaixo do outro */
-            gap: 10px; /* Espaço entre os botões */
+            flex-direction: column;
+            gap: 10px;
         }
 
         .book-item .actions a,
         .book-item .actions button {
-            display: block; /* Ocupa a largura total */
-            width: 100%; /* Ocupa a largura total do pai */
+            display: block;
+            width: 100%;
             padding: 10px 15px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             font-size: 0.95em;
-            text-decoration: none; /* Para links */
+            text-decoration: none;
             transition: background-color 0.3s ease, transform 0.2s ease;
             box-sizing: border-box;
         }
@@ -256,11 +331,19 @@
             .book-item img {
                 height: 180px;
             }
-            .logout-button {
+            .header-actions {
                 top: 15px;
                 right: 15px;
+                gap: 8px;
+            }
+            .action-button {
                 padding: 8px 12px;
                 font-size: 0.9em;
+            }
+            .theme-toggle-button {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1em;
             }
         }
 
@@ -275,26 +358,36 @@
                 font-size: 2em;
             }
             .book-grid {
-                grid-template-columns: 1fr; /* Uma coluna em telas muito pequenas */
+                grid-template-columns: 1fr;
                 gap: 20px;
             }
             .upload-form input[type="text"],
             .upload-form input[type="file"] {
                 width: 100%;
             }
-            .logout-button {
-                position: static; /* Volta para o fluxo normal */
-                margin-bottom: 20px; /* Adiciona margem abaixo se não for posicionado */
-                width: calc(100% - 20px);
+            /* Ajuste para botões de ação em telas muito pequenas */
+            .header-actions {
+                position: static; /* Remove o posicionamento absoluto */
+                flex-direction: column; /* Um abaixo do outro */
+                align-items: stretch; /* Ocupa a largura total */
+                margin-bottom: 20px;
+            }
+            .action-button, .theme-toggle-button {
+                width: 100%;
+                border-radius: 5px; /* Volta a ser retangular/arredondado */
+                text-align: center;
+                padding: 10px 15px;
             }
         }
     </style>
 </head>
-<body>
-    <div class="container">
+<body class="dark-mode"> <div class="container">
         <header>
             <h1>Minha Biblioteca</h1>
-            <button class="logout-button" onclick="window.location.href='/logout'">Sair</button>
+            <div class="header-actions">
+                <button class="action-button logout-button" onclick="window.location.href='/logout'">Sair</button>
+                <button class="action-button theme-toggle-button" id="theme-toggle"></button>
+            </div>
         </header>
 
         <section class="upload-section">
@@ -325,7 +418,35 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             loadBooks(); // Carrega os livros ao carregar a página
+            loadTheme(); // Carrega o tema salvo
         });
+
+        // --- Funções para o Tema (Dark/Light Mode) ---
+        const themeToggleBtn = document.getElementById('theme-toggle');
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.body.classList.add(savedTheme);
+            } else {
+                // Padrão para dark-mode se não houver tema salvo
+                document.body.classList.add('dark-mode');
+                localStorage.setItem('theme', 'dark-mode');
+            }
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            if (document.body.classList.contains('dark-mode')) {
+                document.body.classList.remove('dark-mode');
+                document.body.classList.add('light-mode');
+                localStorage.setItem('theme', 'light-mode');
+            } else {
+                document.body.classList.remove('light-mode');
+                document.body.classList.add('dark-mode');
+                localStorage.setItem('theme', 'dark-mode');
+            }
+        });
+
 
         // --- Configuração do Formulário de Upload ---
         const uploadForm = document.getElementById('uploadForm');
@@ -337,7 +458,7 @@
             const formData = new FormData(uploadForm);
             uploadMessageDiv.classList.remove('show', 'error', 'success');
             uploadMessageDiv.textContent = '';
-            uploadMessageDiv.style.display = 'none'; // Esconde para reexibir
+            uploadMessageDiv.style.display = 'none';
 
             try {
                 const response = await fetch('/upload-book', {
@@ -351,7 +472,7 @@
                     uploadMessageDiv.textContent = data.message;
                     uploadMessageDiv.classList.add('success', 'show');
                     uploadMessageDiv.style.display = 'block';
-                    uploadForm.reset(); // Limpa o formulário
+                    uploadForm.reset();
                     loadBooks(); // Recarrega a lista de livros
                 } else {
                     uploadMessageDiv.textContent = data.error || 'Erro ao enviar livro.';
@@ -370,12 +491,12 @@
         const bookGrid = document.getElementById('bookGrid');
 
         async function loadBooks() {
-            bookGrid.innerHTML = '<p>Carregando livros...</p>'; // Mensagem de carregamento
+            bookGrid.innerHTML = '<p>Carregando livros...</p>';
             try {
                 const response = await fetch('/books');
                 const books = await response.json();
 
-                bookGrid.innerHTML = ''; // Limpa a mensagem de carregamento
+                bookGrid.innerHTML = '';
 
                 if (books.length === 0) {
                     bookGrid.innerHTML = '<p>Nenhum livro encontrado. Comece a adicionar!</p>';
@@ -385,7 +506,7 @@
                 books.forEach(book => {
                     const bookItem = document.createElement('div');
                     bookItem.classList.add('book-item');
-                    bookItem.dataset.bookId = book.id; // Para fácil exclusão
+                    bookItem.dataset.bookId = book.id;
 
                     bookItem.innerHTML = `
                         <img src="${book.cover_url}" alt="Capa do Livro ${book.title}">
@@ -420,7 +541,7 @@
                     alert(result.message);
                     const bookElement = document.querySelector(`[data-book-id=\"${bookId}\"]`);
                     if (bookElement) {
-                        bookElement.remove(); // Remove o elemento da interface
+                        bookElement.remove();
                     }
                 } else {
                     const errorData = await response.json();
