@@ -13,12 +13,13 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['COVERS_FOLDER'] = 'covers'
 
 # Garante que as pastas de upload e covers existem e as cria se não existirem
+# Isso é crucial para o ambiente de produção como o Render, a cada inicialização
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 if not os.path.exists(app.config['COVERS_FOLDER']):
     os.makedirs(app.config['COVERS_FOLDER'])
 
-# Configuração do banco de dados SQLite (armazenamento local, não persistente no Render Free)
+# Configuração do banco de dados SQLite (armazenamento local, NÃO persistente no Render Free)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///library.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -38,17 +39,14 @@ db = SQLAlchemy(app)
 class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.Text)
-    # 'filename' agora armazena o nome do arquivo local
-    filename = db.Column(db.Text, nullable=False)
+    filename = db.Column(db.Text, nullable=False) # Nome do arquivo local
     original_filename = db.Column(db.Text, nullable=False)
-    # 'cover_filename' agora armazena o nome da capa local
-    cover_filename = db.Column(db.Text)
+    cover_filename = db.Column(db.Text) # Nome da capa local
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
-        # Gera URLs para servir arquivos localmente via rotas Flask
         cover_url = url_for('serve_cover', filename=self.cover_filename) if self.cover_filename else url_for('static', filename='placeholder_cover.png')
-        read_url = url_for('serve_book', filename=self.filename)
+        read_url = url_for('serve_book', filename=self.filename) # Gera URL para ler o livro localmente
 
         return {
             'id': self.id,
@@ -76,10 +74,8 @@ def login_required(f):
 
 @app.route('/')
 def serve_login():
-    # Se o usuário já estiver logado, redireciona diretamente para a biblioteca
     if 'logged_in' in session and session['logged_in']:
         return redirect(url_for('serve_library'))
-    # Caso contrário, serve o arquivo index.html da pasta 'public'
     return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/login', methods=['POST'])
