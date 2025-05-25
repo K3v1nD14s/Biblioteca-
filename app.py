@@ -15,8 +15,6 @@ import requests # Importação adicionada para fazer requisições HTTP
 app = Flask(__name__, static_folder='public')
 
 # Configuração do banco de dados SQLAlchemy
-# Usa a variável de ambiente DATABASE_URL fornecida pelo Render para PostgreSQL.
-# Se a variável não estiver definida (ex: para desenvolvimento local), usa SQLite.
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///library.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -24,8 +22,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 # CHAVE SECRETA: ESSENCIAL PARA A SEGURANÇA DAS SESSÕES DO FLASK!
-# Este valor DEVE ser definido como uma variável de ambiente no Render.
-# O segundo argumento de os.environ.get é um valor padrão para desenvolvimento local.
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'uma_chave_secreta_muito_segura_e_aleatoria_para_o_termo_ux_fallback_dev')
 
 # Credenciais de ADMIN para login. EM PRODUÇÃO, SEMPRE USE VARIÁVEIS DE AMBIENTE.
@@ -35,7 +31,6 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
 db = SQLAlchemy(app)
 
 # --- Configuração do Cloudinary ---
-# As credenciais são obtidas das variáveis de ambiente definidas no Render.
 cloudinary.config(
     cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
     api_key=os.environ.get('CLOUDINARY_API_KEY'),
@@ -46,53 +41,48 @@ cloudinary.config(
 class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.Text)
-    # 'filename' agora armazena o Public ID do arquivo do livro no Cloudinary
     filename = db.Column(db.Text, nullable=False)
     original_filename = db.Column(db.Text, nullable=False)
-    # 'cover_filename' agora armazena o Public ID da capa no Cloudinary
     cover_filename = db.Column(db.Text)
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         cover_cloud_url = None
         if self.cover_filename:
-            # Gera a URL da capa no Cloudinary, com transformações para exibição
             cover_cloud_url, options = cloudinary_url(
                 self.cover_filename,
                 resource_type="image",
                 width=200,    # Largura da imagem da capa
                 height=300,   # Altura da imagem da capa
-                crop="fill"   # Preenche a área, cortando se necessário
+                crop="fill"
             )
         else:
-            # Fallback para uma capa de placeholder se não houver capa
             cover_cloud_url = url_for('static', filename='placeholder_cover.png')
 
-        # Determina a extensão do arquivo original para decidir como servir o livro
         file_extension = self.original_filename.lower().split('.')[-1]
         book_read_url = None
 
         if file_extension == 'pdf':
-            # Para PDFs, usa a rota proxy do Flask para forçar a visualização inline
+            # DEBUG: Printa o public_id antes de gerar a URL
+            print(f"DEBUG: Gerando URL para PDF. Public ID: {self.filename}")
             book_read_url = url_for('view_pdf', public_id=self.filename)
+            print(f"DEBUG: URL gerada para PDF: {book_read_url}")
         else:
-            # Para outros formatos (EPUB, DOCX, TXT), usa a URL direta do Cloudinary.
-            # Estes formatos geralmente resultam em download, pois navegadores não os exibem nativamente.
             book_cloud_url, options = cloudinary_url(self.filename, resource_type="raw")
             book_read_url = book_cloud_url
+            print(f"DEBUG: URL gerada para não-PDF: {book_read_url}")
+
 
         return {
             'id': self.id,
             'title': self.title,
-            'filename': self.filename, # Mantém o public_id para operações futuras
+            'filename': self.filename,
             'original_filename': self.original_filename,
-            'cover_url': cover_cloud_url, # URL da capa para o frontend
-            'read_url': book_read_url # URL para o frontend (proxy Flask para PDF, Cloudinary direto para outros)
+            'cover_url': cover_cloud_url,
+            'read_url': book_read_url
         }
 
 # Garante que as tabelas do banco de dados são criadas quando o aplicativo inicia.
-# Isso é executado ao carregar o módulo, o que o Gunicorn fará.
-# Em um ambiente de produção com PostgreSQL, as tabelas serão criadas na primeira vez.
 with app.app_context():
     db.create_all()
 
@@ -109,10 +99,8 @@ def login_required(f):
 
 @app.route('/')
 def serve_login():
-    # Se o usuário já estiver logado, redireciona diretamente para a biblioteca
     if 'logged_in' in session and session['logged_in']:
         return redirect(url_for('serve_library'))
-    # Caso contrário, serve o arquivo index.html da pasta 'public'
     return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/login', methods=['POST'])
@@ -193,39 +181,38 @@ def get_books():
     books = Book.query.order_by(Book.upload_date.desc()).all()
     return jsonify([book.to_dict() for book in books]), 200
 
-# NOVA ROTA: Proxy para visualização de PDFs inline
+# Rota: Proxy para visualização de PDFs inline
 @app.route('/view_pdf/<public_id>')
 @login_required
 def view_pdf(public_id):
+    # DEBUG: Confirma que a rota foi acessada e qual public_id foi recebido
+    print(f"DEBUG: Rota /view_pdf/ acessada com public_id: {public_id}")
     try:
-        # Gera a URL direta do Cloudinary para o arquivo PDF raw
         pdf_url, _ = cloudinary_url(public_id, resource_type="raw")
+        print(f"DEBUG: URL do Cloudinary gerada: {pdf_url}")
 
-        # Busca o conteúdo do PDF do Cloudinary
         response = requests.get(pdf_url, stream=True)
-        response.raise_for_status() # Levanta uma exceção para códigos de status HTTP ruins
+        response.raise_for_status()
 
-        # Obtém o nome original do arquivo do banco de dados para o cabeçalho Content-Disposition
         book = Book.query.filter_by(filename=public_id).first()
         if not book:
+            print(f"ERRO: Livro com public_id {public_id} não encontrado no DB.")
             return "Livro não encontrado.", 404
         
         original_filename = book.original_filename
         
-        # Define os cabeçalhos para forçar a visualização inline do PDF no navegador
         headers = {
             'Content-Type': 'application/pdf',
             'Content-Disposition': f'inline; filename="{original_filename}"'
         }
-
-        # Retorna o conteúdo do PDF como uma resposta Flask, em chunks
+        print(f"DEBUG: Servindo PDF: {original_filename}")
         return Response(response.iter_content(chunk_size=8192), headers=headers)
 
     except requests.exceptions.RequestException as e:
-        print(f"Erro ao buscar PDF do Cloudinary: {e}")
+        print(f"ERRO: Erro ao buscar PDF do Cloudinary: {e}")
         return "Erro ao carregar o PDF.", 500
     except Exception as e:
-        print(f"Erro inesperado ao visualizar PDF: {e}")
+        print(f"ERRO: Erro inesperado ao visualizar PDF: {e}")
         return "Erro interno do servidor.", 500
 
 @app.route('/delete-book/<int:book_id>', methods=['DELETE'])
@@ -236,11 +223,9 @@ def delete_book(book_id):
         return jsonify({'message': 'Livro não encontrado no banco de dados.'}), 404
 
     try:
-        # Deleta o arquivo do livro do Cloudinary usando o Public ID
         if book_to_delete.filename:
             cloudinary.uploader.destroy(book_to_delete.filename, resource_type="raw")
 
-        # Deleta a capa do Cloudinary usando o Public ID
         if book_to_delete.cover_filename:
             cloudinary.uploader.destroy(book_to_delete.cover_filename, resource_type="image")
 
@@ -251,8 +236,3 @@ def delete_book(book_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Erro ao excluir livro: {str(e)}'}), 500
-
-# Este bloco é executado apenas quando o script é rodado diretamente (ex: python app.py).
-# No Render, o Gunicorn é responsável por iniciar o aplicativo, então app.run() não é usado.
-# if __name__ == '__main__':
-#     app.run(debug=True)
