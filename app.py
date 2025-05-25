@@ -1,14 +1,15 @@
 import os
-from flask import Flask, request, send_from_directory, jsonify, session, redirect, url_for, flash
+from flask import Flask, request, send_from_directory, jsonify, session, redirect, url_for, Response
 from flask_sqlalchemy import SQLAlchemy
 from uuid import uuid4
 from datetime import datetime
 from functools import wraps
 
-# Importações do Cloudinary
+# Importações do Cloudinary e requests
 import cloudinary
 import cloudinary.uploader
 from cloudinary.utils import cloudinary_url
+import requests # Importação adicionada para fazer requisições HTTP
 
 # --- Configuração da Aplicação Flask ---
 app = Flask(__name__, static_folder='public')
@@ -53,9 +54,6 @@ class Book(db.Model):
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
-        # Gera a URL do livro (PDF, EPUB, etc.) no Cloudinary usando o Public ID
-        book_cloud_url, options = cloudinary_url(self.filename, resource_type="raw")
-
         cover_cloud_url = None
         if self.cover_filename:
             # Gera a URL da capa no Cloudinary, com transformações para exibição
@@ -68,8 +66,20 @@ class Book(db.Model):
             )
         else:
             # Fallback para uma capa de placeholder se não houver capa
-            # 'url_for' aqui serve um arquivo estático da pasta 'public'
             cover_cloud_url = url_for('static', filename='placeholder_cover.png')
+
+        # Determina a extensão do arquivo original para decidir como servir o livro
+        file_extension = self.original_filename.lower().split('.')[-1]
+        book_read_url = None
+
+        if file_extension == 'pdf':
+            # Para PDFs, usa a rota proxy do Flask para forçar a visualização inline
+            book_read_url = url_for('view_pdf', public_id=self.filename)
+        else:
+            # Para outros formatos (EPUB, DOCX, TXT), usa a URL direta do Cloudinary.
+            # Estes formatos geralmente resultam em download, pois navegadores não os exibem nativamente.
+            book_cloud_url, options = cloudinary_url(self.filename, resource_type="raw")
+            book_read_url = book_cloud_url
 
         return {
             'id': self.id,
@@ -77,7 +87,7 @@ class Book(db.Model):
             'filename': self.filename, # Mantém o public_id para operações futuras
             'original_filename': self.original_filename,
             'cover_url': cover_cloud_url, # URL da capa para o frontend
-            'read_url': book_cloud_url # URL do livro para o frontend
+            'read_url': book_read_url # URL para o frontend (proxy Flask para PDF, Cloudinary direto para outros)
         }
 
 # Garante que as tabelas do banco de dados são criadas quando o aplicativo inicia.
@@ -138,18 +148,15 @@ def upload_book():
 
     if book_file:
         original_filename = book_file.filename
-        # Pega o título do formulário ou usa o nome do arquivo como fallback
         book_title = request.form.get('title', original_filename.split('.')[0])
 
         book_public_id = None
         try:
-            # Faz o upload do arquivo do livro para o Cloudinary.
-            # resource_type="raw" é para arquivos que não são imagens (PDFs, EPUBs).
             upload_result = cloudinary.uploader.upload(
                 book_file,
                 resource_type="raw",
-                folder="library_books", # Pasta no Cloudinary para organizar
-                public_id=f"{book_title.replace(' ', '_').lower()}_{uuid4()}" # ID público único
+                folder="library_books",
+                public_id=f"{book_title.replace(' ', '_').lower()}_{uuid4()}"
             )
             book_public_id = upload_result['public_id']
         except Exception as e:
@@ -160,23 +167,20 @@ def upload_book():
         cover_file = request.files.get('cover_file')
         if cover_file and cover_file.filename != '':
             try:
-                # Faz o upload do arquivo de capa para o Cloudinary.
-                # resource_type padrão é 'image'.
                 cover_upload_result = cloudinary.uploader.upload(
                     cover_file,
-                    folder="library_covers", # Pasta no Cloudinary para capas
-                    public_id=f"cover_{book_public_id}" # ID público para a capa, relacionado ao livro
+                    folder="library_covers",
+                    public_id=f"cover_{book_public_id}"
                 )
                 cover_public_id = cover_upload_result['public_id']
             except Exception as e:
                 print(f"Aviso: Erro ao enviar a capa para o Cloudinary: {str(e)}")
-                # Não impede o upload do livro se a capa falhar, apenas loga o erro.
 
         new_book = Book(
             title=book_title,
-            filename=book_public_id, # Armazena o Public ID do livro no Cloudinary
+            filename=book_public_id,
             original_filename=original_filename,
-            cover_filename=cover_public_id # Armazena o Public ID da capa no Cloudinary
+            cover_filename=cover_public_id
         )
         db.session.add(new_book)
         db.session.commit()
@@ -189,8 +193,40 @@ def get_books():
     books = Book.query.order_by(Book.upload_date.desc()).all()
     return jsonify([book.to_dict() for book in books]), 200
 
-# As rotas serve_book e serve_cover foram removidas, pois os arquivos agora são servidos diretamente pelo Cloudinary.
-# O frontend usará as URLs geradas pelo método to_dict() do modelo Book.
+# NOVA ROTA: Proxy para visualização de PDFs inline
+@app.route('/view_pdf/<public_id>')
+@login_required
+def view_pdf(public_id):
+    try:
+        # Gera a URL direta do Cloudinary para o arquivo PDF raw
+        pdf_url, _ = cloudinary_url(public_id, resource_type="raw")
+
+        # Busca o conteúdo do PDF do Cloudinary
+        response = requests.get(pdf_url, stream=True)
+        response.raise_for_status() # Levanta uma exceção para códigos de status HTTP ruins
+
+        # Obtém o nome original do arquivo do banco de dados para o cabeçalho Content-Disposition
+        book = Book.query.filter_by(filename=public_id).first()
+        if not book:
+            return "Livro não encontrado.", 404
+        
+        original_filename = book.original_filename
+        
+        # Define os cabeçalhos para forçar a visualização inline do PDF no navegador
+        headers = {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': f'inline; filename="{original_filename}"'
+        }
+
+        # Retorna o conteúdo do PDF como uma resposta Flask, em chunks
+        return Response(response.iter_content(chunk_size=8192), headers=headers)
+
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao buscar PDF do Cloudinary: {e}")
+        return "Erro ao carregar o PDF.", 500
+    except Exception as e:
+        print(f"Erro inesperado ao visualizar PDF: {e}")
+        return "Erro interno do servidor.", 500
 
 @app.route('/delete-book/<int:book_id>', methods=['DELETE'])
 @login_required
